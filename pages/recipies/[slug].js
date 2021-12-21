@@ -1,130 +1,97 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router'
+import { useState } from "react";
 import {
-    sanityClient,
-    urlFor,
-    usePreviewSubscription,
-    PortableText,
+  sanityClient,
+  urlFor,
+  usePreviewSubscription,
+  PortableText,
+} from "../../lib/sanity";
 
-} from '../../lib/sanity'
-
-const recipesQuery = `*[ _type == 'recipe' && slug.current == $slug][0]{
-    _id,
-    name,
-    slug,
-    mainImage,
-    ingredient[]{
+const recipeQuery = `*[_type == "recipe" && slug.current == $slug][0]{
+      _id,
+      name,
+      slug,
+      mainImage,
+      ingredient[]{
         _key,
         unit,
         wholeNumber,
         fraction,
         ingredient->{
-            name
+          name
         }
-    },
-    instructions,
-    likes
-  }`
+      },
+      instructions,
+      likes
+    }`;
 
 export default function OneRecipe({ data, preview }) {
-    const router = useRouter()
+  if (!data) return <div>Loading...</div>;
+  const { data: recipe } = usePreviewSubscription(recipeQuery, {
+    params: { slug: data.recipe?.slug.current },
+    initialData: data,
+    enabled: preview,
+  });
 
-    if (router.isFallback) return <div>Loading...</div>;
-    
-    
-    const { data: recipe } = usePreviewSubscription(recipesQuery, {
-        params: { slug: data.recipe?.slug.current },
-        initialData: data,
-        enabled: preview,
-    });
-    
-    const [likes, setLikes] = useState(data?.recipes?.likes)
+  const [likes, setLikes] = useState(data?.recipe?.likes);
 
-    const addLike = async () => {
-        const res = await fetch('/api/handle-like', {
-            method: "POST",
-            body: JSON.stringify({ _id: recipe._id }),
-        }).catch((error) => console.log(error))
+  const addLike = async () => {
+    const res = await fetch("/api/handle-like", {
+      method: "POST",
+      body: JSON.stringify({ _id: recipe._id }),
+    }).catch((error) => console.log(error));
 
-        const data = await res.json();
+    const data = await res.json();
 
-        setLikes(data?.likes)
-    }
+    setLikes(data.likes);
+  };
+  return (
+    <article className="recipe">
+      <h1>{recipe.name}</h1>
 
-    // const { recipe } = data;
+      <button className="like-button" onClick={addLike}>
+        {likes} ❤️
+      </button>
 
-    return (
-        <article className='p-20 min-h-screen '>
-            <div className="container mx-auto max-w-6xl">
-                {/* title */}
-                <h1 className="text-4xl font-bold mb-4">{recipe?.name}</h1>
-
-                <button
-                    className='border border-gray-400'
-                    onClick={addLike}
-                >
-                    {likes} ❤️
-                </button>
-
-                <div className="flex space-x-2">
-                    {/* img  */}
-                    <img
-                        className='w-1/2 border border-gray-400 shadow-lg'
-                        src={urlFor(recipe?.mainImage).url()} alt={recipe?.name} />
-                    {/* ingredients */}
-                    <div className="flex p-8 flex-row w-1/2 border border-gray-400">
-                        <div className="flex flex-col w-1/3 h-full">
-                            {recipe.ingredient?.map((ingredient) => (
-                                <div
-                                    key={ingredient._key}
-                                    className='mb-4'
-                                >
-                                    {ingredient?.wholeNumber}
-                                    {' '}
-                                    {ingredient?.fraction}
-                                    {' '}
-                                    {ingredient?.unit}
-                                    <br />
-                                    {ingredient?.ingredient?.name}
-                                </div>
-                            ))}
-                        </div>
-                        {/* instructions  */}
-                        <PortableText
-                            className='pl-8 flex-grow border-l border-gray-400'
-                            blocks={recipe?.instructions} />
-                    </div>
-                </div>
-            </div>
-        </article>
-    )
+      <main className="content">
+        <img src={urlFor(recipe?.mainImage).url()} alt={recipe.name} />
+        <div className="breakdown">
+          <ul className="ingredients">
+            {recipe.ingredient?.map((ingredient) => (
+              <li key={ingredient._key} className="ingredient">
+                {ingredient?.wholeNumber}
+                {ingredient?.fraction} {ingredient?.unit}
+                <br />
+                {ingredient?.ingredient?.name}
+              </li>
+            ))}
+          </ul>
+          <PortableText
+            blocks={recipe?.instructions}
+            className="instructions"
+          />
+        </div>
+      </main>
+    </article>
+  );
 }
 
 export async function getStaticPaths() {
-    const paths = await sanityClient.fetch(
-        `*[type == 'recipe' && defined(slug.current)]{
-            'params': {
-                'slug': slug.current
-            }
-        }`
-    )
+  const paths = await sanityClient.fetch(
+    `*[_type == "recipe" && defined(slug.current)]{
+      "params": {
+        "slug": slug.current
+      }
+    }`
+  );
 
-    return {
-        paths,
-        fallback: true
-    }
+  return {
+    paths,
+    fallback: true,
+  };
 }
 
 export async function getStaticProps({ params }) {
-    const { slug } = params;
-    const recipe = await sanityClient.fetch(recipesQuery, { slug })
-
-    return {
-        props: {
-            data: {
-                recipe
-            },
-            preview: true
-        }
-    }
+  const { slug } = params;
+  const recipe = await sanityClient.fetch(recipeQuery, { slug });
+  return { props: { data: { recipe }, preview: true } };
 }
