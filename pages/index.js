@@ -21,7 +21,7 @@ export default function Home({ recipes }) {
         <meta />
       </Head>
 
-      <h1 className="px-20">Welcome to Andre's Kitchen</h1>
+      <h1 className="px-20">Welcome to Andres Kitchen</h1>
 
       <div className="px-20 lg:grid lg:grid-cols-2">
         {recipes?.length > 0 && recipes.map((recipe) => (
