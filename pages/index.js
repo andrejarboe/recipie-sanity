@@ -17,7 +17,7 @@ export default function Home({ recipes }) {
   return (
     <MainLayout>
       <Head>
-        <title>Andre's Kitchen | home</title>
+        <title>Andres Kitchen | home</title>
         <meta />
       </Head>
 
