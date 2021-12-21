@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useRouter } from 'next/router'
 
 import {
-  sanityClient,
-  urlFor,
-  usePreviewSubscription,
-  PortableText,
+    sanityClient,
+    urlFor,
+    usePreviewSubscription,
+    PortableText,
 } from "../../lib/sanity";
 
 const recipeQuery = `*[_type == "recipe" && slug.current == $slug][0]{
@@ -31,73 +31,89 @@ export default function OneRecipe({ data, preview }) {
 
     if (router.isFallback) return <div>Loading...</div>;
 
-    
-  const { data: recipe } = usePreviewSubscription(recipeQuery, {
-    params: { slug: data.recipe?.slug.current },
-    initialData: data,
-    enabled: preview,
-  });
 
-  const [likes, setLikes] = useState(data?.recipe?.likes);
+    const { data: recipe } = usePreviewSubscription(recipeQuery, {
+        params: { slug: data.recipe?.slug.current },
+        initialData: data,
+        enabled: preview,
+    });
 
-  const addLike = async () => {
-    const res = await fetch("/api/handle-like", {
-      method: "POST",
-      body: JSON.stringify({ _id: recipe._id }),
-    }).catch((error) => console.log(error));
+    const [likes, setLikes] = useState(data?.recipe?.likes);
 
-    const data = await res.json();
+    const addLike = async () => {
+        const res = await fetch("/api/handle-like", {
+            method: "POST",
+            body: JSON.stringify({ _id: recipe._id }),
+        }).catch((error) => console.log(error));
 
-    setLikes(data.likes);
-  };
-  return (
-    <article className="recipe">
-      <h1>{recipe.name}</h1>
+        const data = await res.json();
 
-      <button className="like-button" onClick={addLike}>
-        {likes} ❤️
-      </button>
+        setLikes(data.likes);
+    };
+    return (
+        <article className='p-20 min-h-screen '>
+            <div className="container mx-auto max-w-6xl">
+                {/* title */}
+                <h1 className="text-4xl font-bold mb-4">{recipe?.name}</h1>
 
-      <main className="content">
-        <img src={urlFor(recipe?.mainImage).url()} alt={recipe.name} />
-        <div className="breakdown">
-          <ul className="ingredients">
-            {recipe.ingredient?.map((ingredient) => (
-              <li key={ingredient._key} className="ingredient">
-                {ingredient?.wholeNumber}
-                {ingredient?.fraction} {ingredient?.unit}
-                <br />
-                {ingredient?.ingredient?.name}
-              </li>
-            ))}
-          </ul>
-          <PortableText
-            blocks={recipe?.instructions}
-            className="instructions"
-          />
-        </div>
-      </main>
-    </article>
-  );
+                <button
+                    className='border border-gray-400'
+                    onClick={addLike}
+                >
+                    {likes} ❤️
+                </button>
+
+                <div className="flex space-x-2">
+                    {/* img  */}
+                    <img
+                        className='w-1/2 border border-gray-400 shadow-lg'
+                        src={urlFor(recipe?.mainImage).url()} alt={recipe?.name} />
+                    {/* ingredients */}
+                    <div className="flex p-8 flex-row w-1/2 border border-gray-400">
+                        <div className="flex flex-col w-1/3 h-full">
+                            {recipe.ingredient?.map((ingredient) => (
+                                <div
+                                    key={ingredient._key}
+                                    className='mb-4'
+                                >
+                                    {ingredient?.wholeNumber}
+                                    {' '}
+                                    {ingredient?.fraction}
+                                    {' '}
+                                    {ingredient?.unit}
+                                    <br />
+                                    {ingredient?.ingredient?.name}
+                                </div>
+                            ))}
+                        </div>
+                        {/* instructions  */}
+                        <PortableText
+                            className='pl-8 flex-grow border-l border-gray-400'
+                            blocks={recipe?.instructions} />
+                    </div>
+                </div>
+            </div>
+        </article>
+    );
 }
 
 export async function getStaticPaths() {
-  const paths = await sanityClient.fetch(
-    `*[_type == "recipe" && defined(slug.current)]{
+    const paths = await sanityClient.fetch(
+        `*[_type == "recipe" && defined(slug.current)]{
       "params": {
         "slug": slug.current
       }
     }`
-  );
+    );
 
-  return {
-    paths,
-    fallback: true,
-  };
+    return {
+        paths,
+        fallback: true,
+    };
 }
 
 export async function getStaticProps({ params }) {
-  const { slug } = params;
-  const recipe = await sanityClient.fetch(recipeQuery, { slug });
-  return { props: { data: { recipe }, preview: true } };
+    const { slug } = params;
+    const recipe = await sanityClient.fetch(recipeQuery, { slug });
+    return { props: { data: { recipe }, preview: true } };
 }
